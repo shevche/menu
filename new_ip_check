@@ -1,0 +1,68 @@
+#!/bin/bash
+
+function check_ip() {
+if [[ $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && \
+ [[ $(echo $1 | awk -F. '{{for (i = 1; i <= NF; i++){if ($i >= 0 && $i <= 255) x+=1 }} {if (x == 4) print "good ip"}}') == 'good ip' ]] 
+#&& [[ $(echo $1 | awk -F. '{if ($1 != 127) print "good ip"}') == 'good ip' ]]
+	then
+		echo good ip
+#		echo $(ipcalc $1 | grep Address: | tr -s ' ' | cut -d\  -f 2)
+	else
+		echo bad ip
+fi
+}
+
+function check_mask() {
+if [[ $1 =~ ^([1-2]?[0-9]|[3][0-2])$ ]]
+        then
+		echo good mask
+	elif [[ $1 =~ ^(254|252|248|240|224|192|128)\.0\.0\.0$ ]] || \
+ 		 [[ $1 =~ ^255\.(254|252|248|240|224|192|128|0)\.0\.0$ ]] || \
+		 [[ $1 =~ ^255\.255\.(254|252|248|240|224|192|128|0)\.0$ ]] || \
+		 [[ $1 =~ ^255\.255\.255\.(254|252|248|240|224|192|128|0)$ ]]
+	then
+                echo good mask
+        else
+                echo bad mask
+fi
+
+
+#	then
+#	 
+#
+#&& \
+# [[ $(echo $1 | awk -F. '{{for (i = 1; i <= NF; i++){if ($i >= 0 && $i <= 255) x+=1 }} {if (x == 4) print "good ip"}}') == 'good ip' ]] && \
+# [[ $(echo $1 | awk -F. '{if ($1 != 127) print "good ip"}') == 'good ip' ]]
+#        then
+#                echo good ip
+#               echo $(ipcalc $1 | grep Address: | tr -s ' ' | cut -d\  -f 2)
+#        else
+#                echo bad ip
+#fi
+}
+
+function menu() {
+#clear
+printf '%s %20s %20s\n' 'Network settings' 'Current ip:' $CURRENT_IP 
+
+}
+
+INTERFASES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
+echo $INTERFASES
+for i in $INTERFASES
+do
+echo $i
+done
+
+while [ 1 ]
+do
+menu
+
+#	echo enter ip
+#	read ip
+#	check_ip $ip
+        echo network mask
+        read net_mask
+        check_mask $net_mask
+
+done
