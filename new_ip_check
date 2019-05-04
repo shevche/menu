@@ -25,6 +25,35 @@ if [[ $1 =~ ^([1-2]?[0-9]|[3][0-2])$ ]]
         else
                 echo bad mask
 fi
+}
+
+
+######### convert /XX mask to xxx.xxx.xxx.xxx
+
+function convert_mask() {
+MASK_TEMP=''
+NEW_MASK=''
+ZEROS=$(expr 32 - $1)
+for (( i=1; i<=$1; i++ ))
+do
+MASK_TEMP=$(echo -e $MASK_TEMP'1')
+done
+for (( i=1; i<=$ZEROS; i++ ))
+do
+MASK_TEMP=$(echo -e $MASK_TEMP'0')
+done
+for (( i=1; i<=4; i++ ))
+do
+NEW_MASK=$(echo "$NEW_MASK""$((2#$(echo $MASK_TEMP | head -c 8) )).")
+MASK_TEMP=$(echo $MASK_TEMP | cut -c 8-)
+done
+NEW_MASK=$(echo -n $NEW_MASK | head -c -1)
+echo $NEW_MASK
+}
+
+
+######### end
+
 
 
 #	then
@@ -39,7 +68,7 @@ fi
 #        else
 #                echo bad ip
 #fi
-}
+
 
 function menu() {
 #clear
@@ -47,22 +76,55 @@ printf '%s %20s %20s\n' 'Network settings' 'Current ip:' $CURRENT_IP
 
 }
 
-INTERFASES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
-echo $INTERFASES
-for i in $INTERFASES
+function show_interfaces.d() {
+INTERFACES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
+echo $INTERFACES
+
+INDEX=0
+for i in $INTERFACES
 do
-echo $i
+	if [ "$i" != 'lo' ]
+		then
+		INDEX=$(expr $INDEX + 1)
+		eval "INTERFACE_$INDEX=$i";
+		echo $INTERFACE_0 $INTERFACE_1
+fi
 done
+
+echo 'The agent have' $INDEX 'interface(s)'
+
+for (( i=1; i<=$INDEX; i++ ))
+do
+echo -e -n \$INTERFACE_$i: ' \t '
+eval echo \$INTERFACE_$i;
+done
+
+for (( i=1; i<=$INDEX; i++ ))
+do
+if [ -f /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) ]
+then
+cat /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i)
+else
+echo file $(eval echo \$INTERFACE_$i) not created
+fi
+done
+}
+
+
 
 while [ 1 ]
 do
-menu
-
+clear
+echo Network menu:
+#show_interfaces.d
 #	echo enter ip
 #	read ip
 #	check_ip $ip
         echo network mask
         read net_mask
-        check_mask $net_mask
+        convert_mask $net_mask
+read xxxxxxx 
+
+
 
 done
