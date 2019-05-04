@@ -1,0 +1,113 @@
+#!/bin/bash
+
+function check_ip() {
+if [[ $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && \
+ [[ $(echo $1 | awk -F. '{{for (i = 1; i <= NF; i++){if ($i >= 0 && $i <= 255) x+=1 }} {if (x == 4) print "good ip"}}') == 'good ip' ]] 
+#&& [[ $(echo $1 | awk -F. '{if ($1 != 127) print "good ip"}') == 'good ip' ]]
+	then
+		echo good ip
+#		echo $(ipcalc $1 | grep Address: | tr -s ' ' | cut -d\  -f 2)
+	else
+		echo bad ip
+fi
+}
+
+
+function convert_mask() {
+MASK_TEMP=''
+NEW_MASK=''
+ZEROS=$(expr 32 - $1)
+for (( i=1; i<=$1; i++ ))
+do
+MASK_TEMP=$(echo -e $MASK_TEMP'1')
+done
+for (( i=1; i<=$ZEROS; i++ ))
+do
+MASK_TEMP=$(echo -e $MASK_TEMP'0')
+done
+echo $MASK_TEMP
+for (( i=1; i<=4; i++ ))
+do
+NEW_MASK=$(echo "$NEW_MASK""$((2#$(echo $MASK_TEMP | head -c 8) )).")
+MASK_TEMP=$(echo $MASK_TEMP | cut -c 9-)
+echo $MASK_TEMP
+done
+NEW_MASK=$(echo -n $NEW_MASK | head -c -1)
+echo $NEW_MASK
+}
+
+
+function check_mask() {
+if [[ $1 =~ ^([1-2]?[0-9]|[3][0-2])$ ]]
+        then
+		convert_mask $1
+	elif [[ $1 =~ ^(254|252|248|240|224|192|128)\.0\.0\.0$ ]] || \
+ 		 [[ $1 =~ ^255\.(254|252|248|240|224|192|128|0)\.0\.0$ ]] || \
+		 [[ $1 =~ ^255\.255\.(254|252|248|240|224|192|128|0)\.0$ ]] || \
+		 [[ $1 =~ ^255\.255\.255\.(254|252|248|240|224|192|128|0)$ ]]
+	then
+                echo $1
+        else
+                echo bad mask
+fi
+}
+
+
+# [[ $(echo $1 | awk -F. '{{for (i = 1; i <= NF; i++){if ($i >= 0 && $i <= 255) x+=1 }} {if (x == 4) print "good ip"}}') == 'good ip' ]] && \
+# [[ $(echo $1 | awk -F. '{if ($1 != 127) print "good ip"}') == 'good ip' ]]
+#               echo $(ipcalc $1 | grep Address: | tr -s ' ' | cut -d\  -f 2)
+
+function menu() {
+#clear
+printf '%s %20s %20s\n' 'Network settings' 'Current ip:' $CURRENT_IP 
+}
+
+function show_interfaces.d() {
+INTERFACES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
+echo $INTERFACES
+INDEX=0
+for i in $INTERFACES
+do
+	if [ "$i" != 'lo' ]
+		then
+		INDEX=$(expr $INDEX + 1)
+		eval "INTERFACE_$INDEX=$i";
+		echo $INTERFACE_0 $INTERFACE_1
+fi
+done
+echo 'The agent have' $INDEX 'interface(s)'
+for (( i=1; i<=$INDEX; i++ ))
+do
+echo -e -n \$INTERFACE_$i: ' \t '
+eval echo \$INTERFACE_$i;
+done
+
+for (( i=1; i<=$INDEX; i++ ))
+do
+if [ -f /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) ]
+then
+cat /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i)
+else
+echo file $(eval echo \$INTERFACE_$i) not created
+fi
+done
+}
+
+
+
+while [ 1 ]
+do
+#clear
+#echo Network menu:
+#show_interfaces.d
+#	echo enter ip
+#	read ip
+#	check_ip $ip
+        echo network mask
+        read net_mask
+        check_mask $net_mask
+#	sleep 2
+
+
+
+done
