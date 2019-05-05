@@ -52,60 +52,18 @@ if [[ $1 =~ ^([1-2]?[0-9]|[3][0-2])$ ]]
 fi
 }
 
-
-# [[ $(echo $1 | awk -F. '{{for (i = 1; i <= NF; i++){if ($i >= 0 && $i <= 255) x+=1 }} {if (x == 4) print "good ip"}}') == 'good ip' ]] && \
-# [[ $(echo $1 | awk -F. '{if ($1 != 127) print "good ip"}') == 'good ip' ]]
-#               echo $(ipcalc $1 | grep Address: | tr -s ' ' | cut -d\  -f 2)
-
-function pb() {
-for (( i=1; i<=$1; i++ ))
-do
-echo -e -n '█'
-done
-}
-
 ############################# MENU ###################################
-#function menu() {
+function menu() {
+echo '   UnivefSLA Agent'
+echo 1')' Show current config
+echo 2')' Configuration network interfaces
+echo 3')' Reset interfaces configuration
+echo 4')' Reload agent
+echo
 
-# dialog --title "UnivefSLA Agent Configeration" --menu "main menu" 12 50 4 \
-#						1 "Show current config" \
-#						2 "Configuration network"\
-#						3 "Reset network configurations"
-#case 
-#clear
-#printf '%s %20s %20s\n' 'Network settings' 'Current ip:' $CURRENT_IP 
-#
-#printf '%10S\n' 'Configuration menu' 
-#echo 2 Configure network
-#echo -e -n "\e[48;5;114m \t\t\t\e[0m"; done 
-#echo 3 Reset network interfaces
-
-#printf '%2s\n'  '---------------------------------'
-#printf '%2s %2s %30s\n' '|' '1 - Show current configure' '|'
-#printf '%2s %2s %30s\n' '|' '2 - Configure network' '|'
-#printf '%2s %2s %30s\n' '|' '3 - Reset network configurations' '|'
-#printf '%2s\n'  '---------------------------------'
-#}
-#
-######################################################################
-
-
-
-function colors_scheme() {
-for fgbg in 38 48 ; do #Foreground/Background
-	for color in {0..256} ; do #Colors
-		#Display the color
-		echo -en "\e[${fgbg};5;${color}m ${color}\t\e[0m"
-		#Display 10 colors per lines
-		if [ $((($color + 1) % 10)) == 0 ] ; then
-			echo #New line
-		fi
-	done
-	echo #New line
-done
-exit 0
 }
 
+############# show all interfases on the aent ##############
 function show_interfaces() {
 INTERFACES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
 INDEX=0
@@ -123,8 +81,8 @@ done
 
 ##################################### configuration interface $1 ################################
 function conf_int() {
-INTERFACE_CONF=$(show_interfaces | grep "$1)" | cut -d$'\t' -f 2)
 
+INTERFACE_CONF=$(show_interfaces | grep "$1)" | cut -d$'\t' -f 2)
 while [ 1 ]; do
 echo Enter IP-address:
 read new_ip
@@ -133,7 +91,7 @@ then
 echo ip: $new_ip
 break
 else
-echo bad ip, please enter correctly ip
+echo Bad ip, please enter correctly ip
 fi
 done
 
@@ -146,7 +104,7 @@ new_mask=$(check_mask $new_mask)
 echo mask: $new_mask
 break
 else
-echo bad mask, please enter correctly mask
+echo Bad mask, please enter correctly mask
 fi
 done
 
@@ -158,7 +116,7 @@ if [ "$(check_ip $new_gw)" != 'bad ip' ]
 		echo gw: $new_gw
 		break
 	else
-		echo bad gw, please enter correctly gateway
+		echo Bad gw, please enter correctly gateway
 fi
 done
 
@@ -182,24 +140,26 @@ break
 elif [ "$i" == 'N' ] || [ "$i" == 'n' ] || [ "$i" == 'no' ]; then
 echo canseled changes.
 break
-
 fi
 done
-
 }
 
-######################################## end #########################################
 
-
-function set_interface() {
+######################################## current_conf #########################################
+function current_interfaces() {
 show_interfaces &>/dev/null
 for (( i=1; i<=$INDEX; i++ ))
 do
 if [ -f /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) ]
 then
-cat /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i)
+echo
+eval echo \$INTERFACE_$i
+cat /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) | egrep '(gateway|address|netmask)'
+echo
 else
-echo file $(eval echo \$INTERFACE_$i) not created
+echo
+echo interfasce $(eval echo \$INTERFACE_$i) not configurated
+echo
 fi
 done
 }
@@ -236,22 +196,23 @@ echo OK!
 
 while [ 1 ]
 do
-#menu
 clear
-echo 1 - Show corrent configuration
-echo 2 - Configuration network
-echo 3 - Reset network configuration
+menu
 read var
 case $var in
-	1) echo 
+	1) echo Current configurations:
+ 	current_interfaces
+	read none
 	;;
-	2) echo 
+	2) echo Choice one of active interfaces:
 	show_interfaces
 	read input
 	conf_int $input
+	read none
 	;;
 	3) echo 
 	reset_conf
+	read none
 	;;
 esac
 done

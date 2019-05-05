@@ -1,0 +1,218 @@
+#!/bin/bash
+
+function check_ip() {
+if [[ $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && \
+ [[ $(echo $1 | awk -F. '{{for (i = 1; i <= NF; i++){if ($i >= 0 && $i <= 255) x+=1 }} {if (x == 4) print "good ip"}}') == 'good ip' ]] 
+#&& [[ $(echo $1 | awk -F. '{if ($1 != 127) print "good ip"}') == 'good ip' ]]
+	then
+		echo $1
+#		echo $(ipcalc $1 | grep Address: | tr -s ' ' | cut -d\  -f 2)
+	else
+		echo bad ip
+fi
+}
+
+
+function convert_mask() {
+MASK_TEMP=''
+NEW_MASK=''
+ZEROS=$(expr 32 - $1)
+for (( i=1; i<=$1; i++ ))
+do
+MASK_TEMP=$(echo -e $MASK_TEMP'1')
+done
+for (( i=1; i<=$ZEROS; i++ ))
+do
+MASK_TEMP=$(echo -e $MASK_TEMP'0')
+done
+#echo $MASK_TEMP
+for (( i=1; i<=4; i++ ))
+do
+NEW_MASK=$(echo "$NEW_MASK""$((2#$(echo $MASK_TEMP | head -c 8) )).")
+MASK_TEMP=$(echo $MASK_TEMP | cut -c 9-)
+#echo $MASK_TEMP
+done
+NEW_MASK=$(echo -n $NEW_MASK | head -c -1)
+echo $NEW_MASK
+}
+
+
+function check_mask() {
+if [[ $1 =~ ^([1-2]?[0-9]|[3][0-2])$ ]]
+        then
+		convert_mask $1
+	elif [[ $1 =~ ^(254|252|248|240|224|192|128)\.0\.0\.0$ ]] || \
+ 		 [[ $1 =~ ^255\.(254|252|248|240|224|192|128|0)\.0\.0$ ]] || \
+		 [[ $1 =~ ^255\.255\.(254|252|248|240|224|192|128|0)\.0$ ]] || \
+		 [[ $1 =~ ^255\.255\.255\.(254|252|248|240|224|192|128|0)$ ]]
+	then
+                echo $1
+        else
+                echo bad mask
+fi
+}
+
+############################# MENU ###################################
+function menu() {
+echo '   UnivefSLA Agent'
+echo 1')' Show current config
+echo 2')' Configuration network interfaces
+echo 3')' Reset interfaces configuration
+echo 4')' Reload agent
+
+}
+
+############# show all interfases on the aent ##############
+function show_interfaces() {
+INTERFACES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
+INDEX=0
+for i in $INTERFACES; do
+	if [ "$i" != 'lo' ]; then
+		INDEX=$(expr $INDEX + 1)
+		eval "INTERFACE_$INDEX=$i";
+	fi
+done
+for (( i=1; i<=$INDEX; i++ )); do
+	echo -e -n $i')''\t'
+	eval echo \$INTERFACE_$i;
+done
+}
+
+##################################### configuration interface $1 ################################
+function conf_int() {
+
+INTERFACE_CONF=$(show_interfaces | grep "$1)" | cut -d$'\t' -f 2)
+while [ 1 ]; do
+echo Enter IP-address:
+read new_ip
+if [ "$(check_ip $new_ip)" != 'bad ip' ] 
+then
+echo ip: $new_ip
+break
+else
+echo Bad ip, please enter correctly ip
+fi
+done
+
+while [ 1 ]; do
+echo Enter Networt mask:
+read new_mask
+if [ "$(check_mask $new_mask)" != 'bad mask' ]
+then
+new_mask=$(check_mask $new_mask)
+echo mask: $new_mask
+break
+else
+echo Bad mask, please enter correctly mask
+fi
+done
+
+while [ 1 ]; do
+echo Enter GW-address:
+read new_gw
+if [ "$(check_ip $new_gw)" != 'bad ip' ]
+	then
+		echo gw: $new_gw
+		break
+	else
+		echo Bad gw, please enter correctly gateway
+fi
+done
+
+while [ 1 ] 
+do
+echo -e interface:'\t' ${INTERFACE_CONF}
+echo -e address:'\t' ${new_ip}
+echo -e gateway:'\t' ${new_gw}
+echo -e netmask:'\t' ${new_mask}
+echo Write changes? '(Y/N)'
+read i
+if [ "$i" == 'Y' ] || [ "$i" == 'y' ] || [ "$i" == 'yes' ]; then
+	cat > ${INTERFACE_CONF} << EOF
+auto ${INTERFACE_CONF}
+iface ${INTERFACE_CONF} inet static
+address ${new_ip}
+gateway ${new_gw}
+netmask ${new_mask}
+EOF
+break
+elif [ "$i" == 'N' ] || [ "$i" == 'n' ] || [ "$i" == 'no' ]; then
+echo canseled changes.
+break
+fi
+done
+}
+
+
+######################################## current_conf #########################################
+function current_interfaces() {
+show_interfaces &>/dev/null
+for (( i=1; i<=$INDEX; i++ ))
+do
+if [ -f /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) ]
+then
+echo
+eval echo \$INTERFACE_$i
+cat /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) | egrep '(gateway|address|netmask)'
+echo
+else
+echo
+echo interfasce $(eval echo \$INTERFACE_$i) not configurated
+echo
+fi
+done
+}
+
+function reset_conf() {
+INTERFACES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
+INDEX=0
+for i in $INTERFACES; do
+        if [ "$i" != 'lo' ]; then
+                INDEX=$(expr $INDEX + 1)
+                eval "INTERFACE_$INDEX=$i";
+        fi
+done
+for (( i=1; i<=$INDEX; i++ )); do
+        if_name=$(eval echo \$INTERFACE_$i)
+	cat > ${if_name} << EOF
+auto ${if_name}
+iface ${if_name} inet static
+EOF
+done
+echo Interface ${if_name} is claered.
+echo OK!
+cat > lo << EOF
+source /etc/network/interfaces.d/*
+
+auto lo
+iface lo inet loopback
+
+EOF
+echo Interface lo is claered.
+echo OK!
+
+}
+
+while [ 1 ]
+do
+clear
+menu
+read var
+case $var in
+	1) echo Current configurations:
+ 	current_interfaces
+	read none
+	;;
+	2) echo Choice one of active interfaces:
+	show_interfaces
+	read input
+	conf_int $input
+	read none
+	;;
+	3) echo 
+	reset_conf
+	read none
+	;;
+esac
+done
+
