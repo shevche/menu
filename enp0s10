@@ -1,0 +1,2 @@
+auto enp0s10
+iface enp0s10 inet static

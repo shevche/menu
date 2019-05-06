@@ -83,28 +83,29 @@ function conf_int() {
 show_interfaces
 
 while [ 1 ]; do
-read input
+read -N 1 -s input
 if show_interfaces | grep -q "${input})" && [[ ! -z $input ]] 
 then
 break
 else
-echo enter correct interface
+echo ERROR: Choice correct interface.
 fi
 done
 
 
 INTERFACE_CONF=$(show_interfaces | egrep ^${input}')' | cut -d$'\t' -f 2)
-echo $INTERFACE_CONF
+clear
 echo Configurations $INTERFACE_CONF
 while [ 1 ]; do
 echo Enter IP-address:
 read new_ip
+
 if [ "$(check_ip $new_ip)" != 'bad ip' ] 
 then
 echo ip: $new_ip
 break
 else
-echo Bad ip, please enter correctly ip
+echo ERROR: Bad IP, please enter correctly IP
 fi
 done
 
@@ -117,28 +118,29 @@ new_mask=$(check_mask $new_mask)
 echo mask: $new_mask
 break
 else
-echo Bad mask, please enter correctly mask
+echo ERROR: Bad mask, please enter correctly mask
 fi
 done
 
 while [ 1 ]; do
-echo Enter GW-address:
+echo Enter Gateway-address:
 read new_gw
 if [ "$(check_ip $new_gw)" != 'bad ip' ]
 	then
-		echo gw: $new_gw
+		echo Gateway: $new_gw
 		break
 	else
-		echo Bad gw, please enter correctly gateway
+		echo ERROR: Bad gateway, please enter correctly gateway
 fi
 done
-
-while [ 1 ] 
-do
+clear
+while [ 1 ]; do
+echo --------------------
 echo -e interface:'\t' ${INTERFACE_CONF}
 echo -e address:'\t' ${new_ip}
 echo -e gateway:'\t' ${new_gw}
 echo -e netmask:'\t' ${new_mask}
+echo --------------------
 echo Write changes? '(Y/N)'
 read i
 if [ "$i" == 'Y' ] || [ "$i" == 'y' ] || [ "$i" == 'yes' ]; then
@@ -165,19 +167,35 @@ for (( i=1; i<=$INDEX; i++ ))
 do
 if [ -f ./$(eval echo \$INTERFACE_$i) ]
 then
-echo
-eval echo \$INTERFACE_$i
+eval echo ======= \$INTERFACE_$i =======
+if cat ./$(eval echo \$INTERFACE_$i) | egrep -q '(gateway|address|netmask)'
+then
 cat ./$(eval echo \$INTERFACE_$i) | egrep '(gateway|address|netmask)'
 echo
 else
+
+echo empty
 echo
-echo interfasce $(eval echo \$INTERFACE_$i) not configurated
-echo
+fi
+
+else
+eval echo ======= \$INTERFACE_$i =======
+eval echo interfasce \$INTERFACE_$i not configurated
 fi
 done
 }
 
 function reset_conf() {
+while [ 1 ]
+do
+echo Clear all interfaces configuration? '(Y/N)'
+read i
+if [ "$i" == 'Y' ] || [ "$i" == 'y' ] || [ "$i" == 'yes' ]; then
+break
+elif [ "$i" == 'N' ] || [ "$i" == 'n' ] || [ "$i" == 'no' ]; then
+return 0
+fi
+done
 INTERFACES=$(ip link | egrep '^[0-9]:' | cut -d ':' -f 2 | xargs echo)
 INDEX=0
 for i in $INTERFACES; do
@@ -198,10 +216,8 @@ done
 echo OK!
 cat > ./lo << EOF
 source /etc/network/interfaces.d/*
-
 auto lo
 iface lo inet loopback
-
 EOF
 echo Interface lo is claered.
 echo OK!
@@ -212,19 +228,33 @@ while [ 1 ]
 do
 clear
 menu
-read var
+read -N 1 -s var
 case $var in
-	1) echo Current configurations:
+	1) 
+	clear
+	echo Current configurations:
  	current_interfaces
-	read none
+	read -N 1 -s none
 	;;
-	2) echo Choice one of active interfaces:
+	2) clear
+	echo Choice one of active interfaces:
 	conf_int
-	read none
+	if [[ $? == 101 ]]
+	then
+	clear
+	else
+	echo
+	echo 'OK! Press any key to continue...'
+	read -N 1 -s none
+	fi
 	;;
-	3) echo 
+	3) clear
+	echo
 	reset_conf
-	read none
+	read -N 1 -s none
+	;;
+	4) echo Bye!
+	exit 0
 	;;
 esac
 done
