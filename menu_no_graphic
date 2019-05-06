@@ -149,11 +149,11 @@ function current_interfaces() {
 show_interfaces &>/dev/null
 for (( i=1; i<=$INDEX; i++ ))
 do
-if [ -f /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) ]
+if [ -f ./$(eval echo \$INTERFACE_$i) ]
 then
 echo
 eval echo \$INTERFACE_$i
-cat /etc/network/interfaces.d/$(eval echo \$INTERFACE_$i) | egrep '(gateway|address|netmask)'
+cat ./$(eval echo \$INTERFACE_$i) | egrep '(gateway|address|netmask)'
 echo
 else
 echo
@@ -174,14 +174,14 @@ for i in $INTERFACES; do
 done
 for (( i=1; i<=$INDEX; i++ )); do
         if_name=$(eval echo \$INTERFACE_$i)
-	cat > ${if_name} << EOF
+	cat > ./${if_name} << EOF
 auto ${if_name}
 iface ${if_name} inet static
 EOF
 done
 echo Interface ${if_name} is claered.
 echo OK!
-cat > lo << EOF
+cat > ./lo << EOF
 source /etc/network/interfaces.d/*
 
 auto lo
