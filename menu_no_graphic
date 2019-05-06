@@ -93,7 +93,8 @@ fi
 done
 
 
-INTERFACE_CONF=$(show_interfaces | grep "$1)" | cut -d$'\t' -f 2)
+INTERFACE_CONF=$(show_interfaces | egrep ^${input}')' | cut -d$'\t' -f 2)
+echo $INTERFACE_CONF
 echo Configurations $INTERFACE_CONF
 while [ 1 ]; do
 echo Enter IP-address:
@@ -191,8 +192,9 @@ for (( i=1; i<=$INDEX; i++ )); do
 auto ${if_name}
 iface ${if_name} inet static
 EOF
-done
+
 echo Interface ${if_name} is claered.
+done
 echo OK!
 cat > ./lo << EOF
 source /etc/network/interfaces.d/*
