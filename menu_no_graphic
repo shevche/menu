@@ -78,10 +78,23 @@ for (( i=1; i<=$INDEX; i++ )); do
 done
 }
 
-##################################### configuration interface $1 ################################
+##################################### configuration interface ################################
 function conf_int() {
+show_interfaces
+
+while [ 1 ]; do
+read input
+if show_interfaces | grep -q "${input})" && [[ ! -z $input ]] 
+then
+break
+else
+echo enter correct interface
+fi
+done
+
 
 INTERFACE_CONF=$(show_interfaces | grep "$1)" | cut -d$'\t' -f 2)
+echo Configurations $INTERFACE_CONF
 while [ 1 ]; do
 echo Enter IP-address:
 read new_ip
@@ -204,9 +217,7 @@ case $var in
 	read none
 	;;
 	2) echo Choice one of active interfaces:
-	show_interfaces
-	read input
-	conf_int $input
+	conf_int
 	read none
 	;;
 	3) echo 
